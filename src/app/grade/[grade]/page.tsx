@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 type GradeInfo = {
   name: string;
@@ -181,7 +182,32 @@ export default function GradePage() {
   const [topic, setTopic] = useState(info?.topic ?? "");
   const [content, setContent] = useState(info?.content ?? "");
   const [adminMode, setAdminMode] = useState(true);
+  const [bookings, setBookings] = useState<Record<string, string>>({});
+useEffect(() => {
+  const loadBookings = async () => {
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("class_name, booking_date, period")
+      .eq("school_year", 2026)
+      .eq("grade", gradeNumber);
 
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const loadedBookings: Record<string, string> = {};
+
+    data?.forEach((booking) => {
+      const bookingKey = `${booking.booking_date}-${booking.period}교시`;
+      loadedBookings[bookingKey] = booking.class_name;
+    });
+
+    setBookings(loadedBookings);
+  };
+
+  loadBookings();
+}, [gradeNumber]);
   const weekDates = useMemo(() => getWeekDates(startDate), [startDate]);
 
   if (!info) {
@@ -323,18 +349,100 @@ export default function GradePage() {
                       <p className="mt-1 text-xs text-slate-400">{row.time}</p>
                     </td>
 
-                    {dayNames.map((day) => {
+                    {dayNames.map((day, dayIndex) => {
                       const available =
                         row.bookable &&
                         (day === "화" || day === "수" || day === "목");
-
+const bookingDate = weekDates[dayIndex];
+const bookingKey = `${bookingDate.toISOString().slice(0, 10)}-${row.period}`;
+const bookedClass = bookings[bookingKey];
                       return (
                         <td
                           key={`${row.period}-${day}`}
                           className="border border-slate-200 p-3"
                         >
-                          {available ? (
+                         {bookedClass ? (
+  <button
+  onClick={async () => {
+  const action = window.prompt(
+    "수정하려면 새 반 이름을 입력하고, 삭제하려면 '삭제'라고 입력해주세요."
+  );
+
+  if (!action) return;
+
+ if (action === "삭제") {
+  const { error } = await supabase
+    .from("bookings")
+    .delete()
+    .eq("school_year", 2026)
+    .eq("grade", gradeNumber)
+    .eq("booking_date", bookingDate.toISOString().slice(0, 10))
+    .eq("period", Number(row.period.replace("교시", "")));
+
+  if (error) {
+    alert("삭제 중 오류가 발생했어요.");
+    console.error(error);
+    return;
+  }
+
+  setBookings((prev) => {
+    const next = { ...prev };
+    delete next[bookingKey];
+    return next;
+  });
+
+  return;
+}
+
+  const { error } = await supabase
+  .from("bookings")
+  .update({ class_name: action })
+  .eq("school_year", 2026)
+  .eq("grade", gradeNumber)
+  .eq("booking_date", bookingDate.toISOString().slice(0, 10))
+  .eq("period", Number(row.period.replace("교시", "")));
+
+if (error) {
+  alert("수정 중 오류가 발생했어요.");
+  console.error(error);
+  return;
+}
+
+setBookings((prev) => ({
+  ...prev,
+  [bookingKey]: action,
+}));
+}}
+  className="flex min-h-20 w-full items-center justify-center rounded-2xl bg-emerald-50 px-3 py-3 text-sm font-bold text-emerald-700"
+>
+  {bookedClass}
+</button>
+) : available ? (
                             <button
+                            onClick={async() => {
+    const className = window.prompt("신청할 반 이름을 입력해주세요.");
+
+    if (!className) return;
+
+const { error } = await supabase.from("bookings").insert({
+  school_year: 2026,
+  grade: gradeNumber,
+  class_name: className,
+  booking_date: bookingDate.toISOString().slice(0, 10),
+  period: Number(row.period.replace("교시", "")),
+});
+
+if (error) {
+  alert("신청 저장 중 오류가 발생했어요.");
+  console.error(error);
+  return;
+}
+
+    setBookings((prev) => ({
+      ...prev,
+      [bookingKey]: className,
+    }));
+  }}
                               className={`min-h-20 w-full rounded-2xl ${theme.soft} px-3 py-3 font-semibold ${theme.text} transition hover:opacity-80`}
                             >
                               신청하기
