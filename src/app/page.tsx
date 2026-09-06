@@ -1,38 +1,40 @@
+import Link from "next/link";
+
 const grades = [
   {
     grade: 1,
     title: "1학년",
-    description: "1학년 수업 신청",
+    description: "6개 반 수업 신청",
     color: "bg-rose-100 hover:bg-rose-200",
   },
   {
     grade: 2,
     title: "2학년",
-    description: "2학년 수업 신청",
+    description: "7개 반 수업 신청",
     color: "bg-orange-100 hover:bg-orange-200",
   },
   {
     grade: 3,
     title: "3학년",
-    description: "3학년 수업 신청",
+    description: "8개 반 수업 신청",
     color: "bg-amber-100 hover:bg-amber-200",
   },
   {
     grade: 4,
     title: "4학년",
-    description: "4학년 수업 신청",
+    description: "8개 반 수업 신청",
     color: "bg-emerald-100 hover:bg-emerald-200",
   },
   {
     grade: 5,
     title: "5학년",
-    description: "5학년 수업 신청",
+    description: "8개 반 수업 신청",
     color: "bg-sky-100 hover:bg-sky-200",
   },
   {
     grade: 6,
     title: "6학년",
-    description: "6학년 수업 신청",
+    description: "8개 반 수업 신청",
     color: "bg-violet-100 hover:bg-violet-200",
   },
 ];
@@ -55,9 +57,9 @@ export default function Home() {
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {grades.map((item) => (
-            <button
+            <Link
               key={item.grade}
-              type="button"
+              href={`/grade/${item.grade}`}
               className={`${item.color} group min-h-44 rounded-3xl border border-white/70 p-7 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md`}
             >
               <div className="flex h-full flex-col justify-between">
@@ -81,7 +83,7 @@ export default function Home() {
                   </span>
                 </div>
               </div>
-            </button>
+            </Link>
           ))}
         </section>
 
