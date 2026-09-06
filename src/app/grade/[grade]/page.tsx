@@ -181,8 +181,62 @@ export default function GradePage() {
   const [startDate, setStartDate] = useState("2026-09-07");
   const [topic, setTopic] = useState(info?.topic ?? "");
   const [content, setContent] = useState(info?.content ?? "");
-  const [adminMode, setAdminMode] = useState(true);
+  const [adminMode, setAdminMode] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [bookings, setBookings] = useState<Record<string, string>>({});
+   useEffect(() => {
+  supabase.auth.getSession().then(({ data }) => {
+    setIsLoggedIn(!!data.session);
+  });
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    setIsLoggedIn(!!session);
+  });
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
+  async function handleGoogleLogin() {
+   
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: window.location.href,
+    },
+  });
+
+  if (error) {
+    console.error(error);
+    alert("Google 로그인 중 오류가 발생했어요.");
+  }
+}
+useEffect(() => {
+  const loadGradeSettings = async () => {
+    const { data, error } = await supabase
+      .from("grade_settings")
+      .select("first_week_start, topic, content")
+      .eq("school_year", 2026)
+      .eq("grade", gradeNumber)
+      .single();
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    if (data.first_week_start) {
+      setStartDate(data.first_week_start);
+    }
+
+    setTopic(data.topic);
+    setContent(data.content);
+  };
+
+  loadGradeSettings();
+}, [gradeNumber]);
 useEffect(() => {
   const loadBookings = async () => {
     const { data, error } = await supabase
@@ -236,10 +290,27 @@ useEffect(() => {
     setStartDate(date.toISOString().slice(0, 10));
   }
 
-  function handleSave() {
-    alert("화면 수정 내용이 적용되었습니다.\n다음 단계에서 실제 저장 기능을 연결할게요.");
-    setAdminMode(false);
+ async function handleSave() {
+    console.log("저장 직전 content:", content);
+  const { error } = await supabase
+    .from("grade_settings")
+    .update({
+      first_week_start: startDate,
+      topic: topic,
+      content: content,
+    })
+    .eq("school_year", 2026)
+    .eq("grade", gradeNumber);
+
+  if (error) {
+    console.error(error);
+    alert("설정 저장 중 오류가 발생했어요.");
+    return;
   }
+
+  alert("수업 설정이 저장되었습니다.");
+  setAdminMode(false);
+}
 
   return (
     <main className={`min-h-screen ${theme.page} px-4 py-8 sm:px-6`}>
@@ -263,7 +334,7 @@ useEffect(() => {
         <section
           className={`mb-6 rounded-3xl border ${theme.border} bg-white p-6 shadow-sm`}
         >
-          {adminMode && (
+          {!adminMode && isLoggedIn && (
             <div className={`mb-5 rounded-2xl ${theme.soft} p-4`}>
               <p className={`mb-3 text-sm font-bold ${theme.text}`}>
                 관리자용 주 시작 날짜 설정
@@ -277,7 +348,17 @@ useEffect(() => {
                   <input
                     type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+  const selectedDate = e.target.value;
+  const day = new Date(`${selectedDate}T00:00:00`).getDay();
+
+  if (day !== 1) {
+    alert("주 시작 날짜는 월요일만 선택할 수 있어요.");
+    return;
+  }
+
+  setStartDate(selectedDate);
+}}
                     className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
                   />
                 </div>
@@ -477,14 +558,27 @@ if (error) {
               </span>
             </div>
 
-            {!adminMode && (
-              <button
-                onClick={() => setAdminMode(true)}
-                className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600"
-              >
-                관리자 수정
-              </button>
-            )}
+           {!adminMode && (
+  <div className="flex gap-2">
+    {!isLoggedIn && (
+      <button
+        onClick={handleGoogleLogin}
+        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+      >
+        Google로 관리자 로그인
+      </button>
+    )}
+
+    {isLoggedIn && (
+      <button
+        onClick={() => setAdminMode(true)}
+        className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600"
+      >
+        관리자 수정
+      </button>
+    )}
+  </div>
+)}
           </div>
 
           <h2 className="text-xl font-bold text-slate-800">📘 수업 안내</h2>
