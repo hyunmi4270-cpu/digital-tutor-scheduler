@@ -183,16 +183,23 @@ export default function GradePage() {
   const [content, setContent] = useState(info?.content ?? "");
   const [adminMode, setAdminMode] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [bookings, setBookings] = useState<Record<string, string>>({});
    useEffect(() => {
-  supabase.auth.getSession().then(({ data }) => {
-    setIsLoggedIn(!!data.session);
-  });
+ supabase.auth.getSession().then(({ data }) => {
+  setIsLoggedIn(!!data.session);
+  setIsAdmin(
+    data.session?.user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
+  );
+});
 
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((_event, session) => {
-    setIsLoggedIn(!!session);
+   setIsLoggedIn(!!session);
+setIsAdmin(
+  session?.user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
+);
   });
 
   return () => {
@@ -212,6 +219,19 @@ export default function GradePage() {
     console.error(error);
     alert("Google 로그인 중 오류가 발생했어요.");
   }
+}
+async function handleLogout() {
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    console.error(error);
+    alert("로그아웃 중 오류가 발생했어요.");
+    return;
+  }
+
+  setIsLoggedIn(false);
+  setIsAdmin(false);
+  setAdminMode(false);
 }
 useEffect(() => {
   const loadGradeSettings = async () => {
@@ -569,26 +589,33 @@ if (error) {
       </button>
     )}
 
-    {isLoggedIn && (
-      <button
-        onClick={() => setAdminMode(true)}
-        className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600"
-      >
-        관리자 수정
-      </button>
-    )}
+   {isAdmin && (
+  <>
+    <button
+      onClick={() => setAdminMode(true)}
+      className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600"
+    >
+      관리자 수정
+    </button>
+
+    <button
+      onClick={handleLogout}
+      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
+    >
+      관리자 로그아웃
+    </button>
+  </>
+)}
   </div>
 )}
           </div>
 
-          <h2 className="text-xl font-bold text-slate-800">📘 수업 안내</h2>
+          
 
           {adminMode ? (
             <div className="mt-5 grid gap-5">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-500">
-                  수업 주제
-                </label>
+                
                 <input
                   type="text"
                   value={topic}
@@ -598,9 +625,7 @@ if (error) {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-500">
-                  수업 내용
-                </label>
+                
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
@@ -619,12 +644,12 @@ if (error) {
           ) : (
             <div className="mt-5 space-y-5">
               <div className="rounded-2xl bg-slate-50 p-5">
-                <p className="text-sm font-semibold text-slate-400">수업 주제</p>
+                
                 <p className="mt-2 text-lg font-bold text-slate-700">{topic}</p>
               </div>
 
               <div className="rounded-2xl bg-slate-50 p-5">
-                <p className="text-sm font-semibold text-slate-400">수업 내용</p>
+                
                 <div className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">
                   {content}
                 </div>
