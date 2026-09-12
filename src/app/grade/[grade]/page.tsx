@@ -185,6 +185,7 @@ export default function GradePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [bookings, setBookings] = useState<Record<string, string>>({});
+  const [occupiedSlots, setOccupiedSlots] = useState<Set<string>>(new Set());
    useEffect(() => {
  supabase.auth.getSession().then(({ data }) => {
   setIsLoggedIn(!!data.session);
@@ -279,8 +280,28 @@ useEffect(() => {
 
     setBookings(loadedBookings);
   };
+  const loadOccupiedSlots = async () => {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("booking_date, period")
+    .eq("school_year", 2026);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const slots = new Set<string>();
+
+  data?.forEach((booking) => {
+    slots.add(`${booking.booking_date}-${booking.period}교시`);
+  });
+
+  setOccupiedSlots(slots);
+};
 
   loadBookings();
+  loadOccupiedSlots();
 }, [gradeNumber]);
   const weekDates = useMemo(() => getWeekDates(startDate), [startDate]);
 
@@ -518,7 +539,7 @@ setBookings((prev) => ({
 >
   {bookedClass}
 </button>
-) : available ? (
+) : available && !occupiedSlots.has(bookingKey) ? (
                             <button
                             onClick={async() => {
     const className = window.prompt("신청할 반 이름을 입력해주세요.");
