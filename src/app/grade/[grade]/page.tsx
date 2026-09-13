@@ -512,6 +512,11 @@ const bookedClass = bookings[bookingKey];
     delete next[bookingKey];
     return next;
   });
+  setOccupiedSlots((prev) => {
+  const next = new Set(prev);
+  next.delete(bookingKey);
+  return next;
+});
 
   return;
 }
